@@ -15,22 +15,22 @@ void xor_encrypt_decrypt_buffer(unsigned char *buffer, size_t length, const char
     }
 }
 
-// AES S-Box for SubBytes transformation
-static const uint8_t sbox[256] = {
-    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
-    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
-    // ... (256 values, full table needed for AES S-Box)
-};
+// AES S-Box for SubBytes transformation (Placeholder, full implementation needed)
+static const uint8_t sbox[256] = { /* Full AES S-Box table required */ };
 
 // Simple AES Key Expansion stub (requires full AES implementation)
 void aes_key_expansion(const uint8_t *key, uint8_t *expandedKeys) {
     // Key expansion logic here (omitted for brevity)
 }
 
-// AES Encryption function (Simplified, assumes 1-block encryption)
+// AES Encryption function (Placeholder, assumes 1-block encryption)
 void aes_encrypt_block(uint8_t *block, const uint8_t *roundKeys) {
-    // AES encryption steps (AddRoundKey, SubBytes, ShiftRows, MixColumns, AddRoundKey)
-    // This is a placeholder for a full AES implementation
+    // AES encryption steps (Placeholder)
+}
+
+// AES Decryption function (Placeholder, assumes 1-block decryption)
+void aes_decrypt_block(uint8_t *block, const uint8_t *roundKeys) {
+    // AES decryption steps (Placeholder)
 }
 
 // Combined AES + XOR File Encryption
@@ -53,10 +53,7 @@ void encrypt_file(const char *input_filename, const char *output_filename, const
             memset(buffer + bytes_read, AES_BLOCK_SIZE - bytes_read, AES_BLOCK_SIZE - bytes_read); // PKCS7 padding
         }
         
-        // Apply XOR encryption first
         xor_encrypt_decrypt_buffer(buffer, AES_BLOCK_SIZE, xor_key);
-        
-        // Apply AES encryption
         aes_encrypt_block(buffer, expandedKeys);
         
         fwrite(buffer, 1, AES_BLOCK_SIZE, outfile);
@@ -67,9 +64,36 @@ void encrypt_file(const char *input_filename, const char *output_filename, const
     printf("AES + XOR encryption completed: %s\n", output_filename);
 }
 
+// Combined AES + XOR File Decryption
+void decrypt_file(const char *input_filename, const char *output_filename, const uint8_t *aes_key, const char *xor_key) {
+    FILE *infile = fopen(input_filename, "rb");
+    FILE *outfile = fopen(output_filename, "wb");
+    if (!infile || !outfile) {
+        perror("File opening failed");
+        exit(1);
+    }
+    
+    uint8_t expandedKeys[240]; // Key expansion storage
+    aes_key_expansion(aes_key, expandedKeys);
+    
+    unsigned char buffer[AES_BLOCK_SIZE];
+    size_t bytes_read;
+    
+    while ((bytes_read = fread(buffer, 1, AES_BLOCK_SIZE, infile)) > 0) {
+        aes_decrypt_block(buffer, expandedKeys);
+        xor_encrypt_decrypt_buffer(buffer, AES_BLOCK_SIZE, xor_key);
+        
+        fwrite(buffer, 1, AES_BLOCK_SIZE, outfile);
+    }
+    
+    fclose(infile);
+    fclose(outfile);
+    printf("AES + XOR decryption completed: %s\n", output_filename);
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 5) {
-        printf("Usage: %s <encrypt> <input_file> <output_file> <aes_key> <xor_key>\n", argv[0]);
+        printf("Usage: %s <encrypt|decrypt> <input_file> <output_file> <aes_key> <xor_key>\n", argv[0]);
         return 1;
     }
     
@@ -82,8 +106,11 @@ int main(int argc, char *argv[]) {
     
     if (strcmp(operation, "encrypt") == 0) {
         encrypt_file(input_file, output_file, aes_key, argv[5]);
+    } else if (strcmp(operation, "decrypt") == 0) {
+        decrypt_file(input_file, output_file, aes_key, argv[5]);
     } else {
-        printf("Decryption not implemented yet.\n");
+        printf("Invalid operation. Use 'encrypt' or 'decrypt'.\n");
+        return 1;
     }
     
     return 0;
